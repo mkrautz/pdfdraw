@@ -11,7 +11,7 @@ package pdfdraw
 #include <poppler.h>
 #include <cairo.h>
 
-static unsigned char getpixel(unsigned char *buf, int idx) {
+static unsigned char getbyte(unsigned char *buf, int idx) {
 	return buf[idx];
 }
 
@@ -126,10 +126,16 @@ func (page *Page) Render(width int, height int, opts *RenderOptions) image.Image
 
 	C.poppler_page_render_for_printing(page.page, ctx)
 	data := C.cairo_image_surface_get_data(surface)
-	rgba := image.NewRGBA(width, height)
-	for idx, _ := range rgba.Pix {
-		rgba.Pix[idx] = uint8(C.getpixel(data, C.int(idx)))
+	nrgba := image.NewNRGBA(width, height)
+	for x := 0; x < width; x++ {
+		for y := 0; y < height; y++ {
+			nrgba.SetNRGBA(x, y, image.NRGBAColor{
+				R: uint8(C.getbyte(data, C.int(x*4 + 4*y*width + 2))),
+				G: uint8(C.getbyte(data, C.int(x*4 + 4*y*width + 1))),
+				B: uint8(C.getbyte(data, C.int(x*4 + 4*y*width + 0))),
+				A: uint8(C.getbyte(data, C.int(x*4 + 4*y*width + 3))),
+			})
+		}
 	}
-
-	return rgba
+	return nrgba
 }
