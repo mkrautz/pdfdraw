@@ -101,7 +101,10 @@ func (page *Page) Size() (width, height float64) {
 // Render the page to an image.Image
 func (page *Page) Render(width int, height int, opts *RenderOptions) image.Image {
 	surface := C.cairo_image_surface_create(C.CAIRO_FORMAT_ARGB32, C.int(width), C.int(height))
+	defer C.cairo_surface_destroy(surface)
+
 	ctx := C.cairo_create(surface)
+	defer C.cairo_destroy(ctx)
 
 	ow, oh := page.Size()
 	fw := float64(width)
@@ -137,5 +140,6 @@ func (page *Page) Render(width int, height int, opts *RenderOptions) image.Image
 			})
 		}
 	}
+
 	return nrgba
 }
