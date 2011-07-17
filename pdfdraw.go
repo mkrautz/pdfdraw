@@ -37,6 +37,7 @@ type Page interface {
 
 // A BackendOpener is a function that can be used to open a Document using a specific backend
 type BackendOpener func(path string) (doc Document, err os.Error)
+
 var backends map[string]BackendOpener
 
 func init() {

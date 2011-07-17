@@ -79,7 +79,7 @@ func (page *popplerPage) Size() (width, height float64) {
 	var (
 		dw, dh C.double
 	)
-	C.poppler_page_get_size(page.page, &dw, &dh);
+	C.poppler_page_get_size(page.page, &dw, &dh)
 	return float64(dw), float64(dh)
 }
 
@@ -101,11 +101,11 @@ func (page *popplerPage) Render(width int, height int, opts *RenderOptions) imag
 		fillColor = opts.FillColor
 	}
 	C.cairo_set_source_rgba(ctx, C.double(float64(fillColor.R)/float64(255)),
-	                             C.double(float64(fillColor.G)/float64(255)),
-	                             C.double(float64(fillColor.B)/float64(255)),
-	                             C.double(float64(fillColor.A)/float64(255)))
-	C.cairo_rectangle(ctx, 0, 0, C.double(width), C.double(height));
-	C.cairo_fill(ctx);
+		C.double(float64(fillColor.G)/float64(255)),
+		C.double(float64(fillColor.B)/float64(255)),
+		C.double(float64(fillColor.A)/float64(255)))
+	C.cairo_rectangle(ctx, 0, 0, C.double(width), C.double(height))
+	C.cairo_fill(ctx)
 
 	if opts != nil && opts.NoAA {
 		C.cairo_set_antialias(ctx, C.CAIRO_ANTIALIAS_NONE)
@@ -117,10 +117,10 @@ func (page *popplerPage) Render(width int, height int, opts *RenderOptions) imag
 	for x := 0; x < width; x++ {
 		for y := 0; y < height; y++ {
 			nrgba.SetNRGBA(x, y, image.NRGBAColor{
-				R: uint8(C.getbyte(data, C.int(x*4 + 4*y*width + 2))),
-				G: uint8(C.getbyte(data, C.int(x*4 + 4*y*width + 1))),
-				B: uint8(C.getbyte(data, C.int(x*4 + 4*y*width + 0))),
-				A: uint8(C.getbyte(data, C.int(x*4 + 4*y*width + 3))),
+				R: uint8(C.getbyte(data, C.int(x*4+4*y*width+2))),
+				G: uint8(C.getbyte(data, C.int(x*4+4*y*width+1))),
+				B: uint8(C.getbyte(data, C.int(x*4+4*y*width+0))),
+				A: uint8(C.getbyte(data, C.int(x*4+4*y*width+3))),
 			})
 		}
 	}

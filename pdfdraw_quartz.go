@@ -92,9 +92,9 @@ func (doc *quartzDocument) Page(idx int) Page {
 }
 
 func (page *quartzPage) Size() (width, height float64) {
-	rect := C.CGPDFPageGetBoxRect(page.page, C.kCGPDFArtBox);
+	rect := C.CGPDFPageGetBoxRect(page.page, C.kCGPDFArtBox)
 	x, y, w, h := float64(rect.origin.x), float64(rect.origin.y), float64(rect.size.width), float64(rect.size.height)
-	return x-w, y-h
+	return x - w, y - h
 }
 
 func (page *quartzPage) Render(width int, height int, opts *RenderOptions) image.Image {
@@ -111,10 +111,10 @@ func (page *quartzPage) Render(width int, height int, opts *RenderOptions) image
 		fillColor = opts.FillColor
 	}
 	C.FillContextWithColor(ctx, w, h,
-						   C.float(float32(fillColor.R)/255.0),
-						   C.float(float32(fillColor.G)/255.0),
-						   C.float(float32(fillColor.B)/255.0),
-						   C.float(float32(fillColor.A)/255.0))
+		C.float(float32(fillColor.R)/255.0),
+		C.float(float32(fillColor.G)/255.0),
+		C.float(float32(fillColor.B)/255.0),
+		C.float(float32(fillColor.A)/255.0))
 
 	C.RenderPageToContext(ctx, page.page, w, h)
 	return rgba
