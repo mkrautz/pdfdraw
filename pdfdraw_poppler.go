@@ -2,7 +2,6 @@
 // The use of this source code is goverened by a BSD-style
 // license that can be found in the LICENSE-file.
 
-// Package pdfdraw implements a library for rendering and reading PDFs (Currently implemented on top of poppler-glib)
 package pdfdraw
 
 /*
@@ -38,59 +37,45 @@ import (
 	"unsafe"
 )
 
-func init() {
-	C.g_type_init()
-}
-
-// A Document represents a PDF document
-type Document struct {
+type popplerDocument struct {
 	doc *C.PopplerDocument
 }
 
-// A Page represents a page in a Document
-type Page struct {
+type popplerPage struct {
 	page *C.PopplerPage
 }
 
-// Open a PDF file at path and return a Document
-func Open(path string) (doc *Document, err os.Error) {
+func init() {
+	C.g_type_init()
+	RegisterBackend("poppler", popplerOpenDoc)
+}
+
+func popplerOpenDoc(path string) (doc Document, err os.Error) {
 	uri := C.path_to_uri(C.CString(path))
 	if uri == nil {
 		return nil, os.NewError("unable to convert path to uri")
 	}
 	defer C.free(unsafe.Pointer(uri))
 
-	doc = new(Document)
-	doc.doc = C.poppler_document_new_from_file(uri, nil, nil)
-	if doc.doc == nil {
+	pd := new(popplerDocument)
+	pd.doc = C.poppler_document_new_from_file(uri, nil, nil)
+	if pd == nil {
 		return nil, os.NewError("unable to open file")
 	}
-
-	return doc, nil
+	return pd, nil
 }
 
-// Get the total number of pages in the Document
-func (doc *Document) NumPages() int {
+func (doc *popplerDocument) NumPages() int {
 	return int(C.poppler_document_get_n_pages(doc.doc))
 }
 
-// Get a Page
-func (doc *Document) Page(idx int) (page *Page) {
-	page = new(Page)
-	page.page = C.poppler_document_get_page(doc.doc, C.int(idx))
-	return
+func (doc *popplerDocument) Page(idx int) (page Page) {
+	pp := new(popplerPage)
+	pp.page = C.poppler_document_get_page(doc.doc, C.int(idx))
+	return pp
 }
 
-// RenderOptions specifies a set of options for rendering a page.
-type RenderOptions struct {
-	// The color to fill the image with before it is drawn.
-	FillColor image.RGBAColor
-	// Disable anti-aliasing
-	NoAA bool
-}
-
-// Get the internal size of the Page
-func (page *Page) Size() (width, height float64) {
+func (page *popplerPage) Size() (width, height float64) {
 	var (
 		dw, dh C.double
 	)
@@ -98,8 +83,7 @@ func (page *Page) Size() (width, height float64) {
 	return float64(dw), float64(dh)
 }
 
-// Render the page to an image.Image
-func (page *Page) Render(width int, height int, opts *RenderOptions) image.Image {
+func (page *popplerPage) Render(width int, height int, opts *RenderOptions) image.Image {
 	surface := C.cairo_image_surface_create(C.CAIRO_FORMAT_ARGB32, C.int(width), C.int(height))
 	defer C.cairo_surface_destroy(surface)
 
