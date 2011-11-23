@@ -32,8 +32,10 @@ static char *path_to_uri(char *path) {
 import "C"
 
 import (
+	"errors"
 	"image"
-	"os"
+	"image/color"
+
 	"unsafe"
 )
 
@@ -50,17 +52,17 @@ func init() {
 	RegisterBackend("poppler", popplerOpenDoc)
 }
 
-func popplerOpenDoc(path string) (doc Document, err os.Error) {
+func popplerOpenDoc(path string) (doc Document, err error) {
 	uri := C.path_to_uri(C.CString(path))
 	if uri == nil {
-		return nil, os.NewError("unable to convert path to uri")
+		return nil, errors.New("unable to convert path to uri")
 	}
 	defer C.free(unsafe.Pointer(uri))
 
 	pd := new(popplerDocument)
 	pd.doc = C.poppler_document_new_from_file(uri, nil, nil)
 	if pd == nil {
-		return nil, os.NewError("unable to open file")
+		return nil, errors.New("unable to open file")
 	}
 	return pd, nil
 }
@@ -96,7 +98,7 @@ func (page *popplerPage) Render(width int, height int, opts *RenderOptions) imag
 	sw, sh := float64(fw/ow), float64(fh/oh)
 	C.cairo_scale(ctx, C.double(sw), C.double(sh))
 
-	fillColor := image.RGBAColor{255, 255, 255, 255}
+	fillColor := color.RGBA{255, 255, 255, 255}
 	if opts != nil {
 		fillColor = opts.FillColor
 	}
@@ -113,10 +115,10 @@ func (page *popplerPage) Render(width int, height int, opts *RenderOptions) imag
 
 	C.poppler_page_render_for_printing(page.page, ctx)
 	data := C.cairo_image_surface_get_data(surface)
-	nrgba := image.NewNRGBA(width, height)
+	nrgba := image.NewNRGBA(image.Rect(0, 0, width, height))
 	for x := 0; x < width; x++ {
 		for y := 0; y < height; y++ {
-			nrgba.SetNRGBA(x, y, image.NRGBAColor{
+			nrgba.SetNRGBA(x, y, color.NRGBA{
 				R: uint8(C.getbyte(data, C.int(x*4+4*y*width+2))),
 				G: uint8(C.getbyte(data, C.int(x*4+4*y*width+1))),
 				B: uint8(C.getbyte(data, C.int(x*4+4*y*width+0))),

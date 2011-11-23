@@ -50,8 +50,10 @@ static void RenderPageToContext(CGContextRef ctx, CGPDFPageRef page, int w, int 
 import "C"
 
 import (
+	"errors"
 	"image"
-	"os"
+	"image/color"
+
 	"reflect"
 	"runtime"
 	"unsafe"
@@ -69,11 +71,11 @@ func init() {
 	RegisterBackend("quartz", openQuartzDoc)
 }
 
-func openQuartzDoc(path string) (doc Document, err os.Error) {
+func openQuartzDoc(path string) (doc Document, err error) {
 	qd := new(quartzDocument)
 	qd.doc = C.OpenDoc(C.CString(path))
 	if qd.doc == nil {
-		return nil, os.NewError("unable to open pdf file")
+		return nil, errors.New("unable to open pdf file")
 	}
 	runtime.SetFinalizer(qd, func(qd *quartzDocument) {
 		C.ReleaseDoc(qd.doc)
@@ -100,13 +102,13 @@ func (page *quartzPage) Size() (width, height float64) {
 func (page *quartzPage) Render(width int, height int, opts *RenderOptions) image.Image {
 	w, h := C.int(width), C.int(height)
 
-	rgba := image.NewRGBA(width, height)
+	rgba := image.NewRGBA(image.Rect(0, 0, width, height))
 	_, ptr := unsafe.Reflect(rgba.Pix)
 	hdrp := (*reflect.SliceHeader)(ptr)
 	ctx := C.CreateBitmapContext(w, h, unsafe.Pointer(hdrp.Data))
 	defer C.ReleaseBitmapContext(ctx)
 
-	fillColor := image.RGBAColor{255, 255, 255, 255}
+	fillColor := color.RGBA{255, 255, 255, 255}
 	if opts != nil {
 		fillColor = opts.FillColor
 	}

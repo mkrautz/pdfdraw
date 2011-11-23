@@ -6,14 +6,15 @@
 package pdfdraw
 
 import (
+	"errors"
 	"image"
-	"os"
+	"image/color"
 )
 
 // RenderOptions specifies a set of options for rendering a page.
 type RenderOptions struct {
 	// The color to fill the image with before it is drawn.
-	FillColor image.RGBAColor
+	FillColor color.RGBA
 
 	// Disable anti-aliasing
 	NoAA bool
@@ -36,7 +37,7 @@ type Page interface {
 }
 
 // A BackendOpener is a function that can be used to open a Document using a specific backend
-type BackendOpener func(path string) (doc Document, err os.Error)
+type BackendOpener func(path string) (doc Document, err error)
 
 var backends map[string]BackendOpener
 
@@ -50,12 +51,12 @@ func RegisterBackend(name string, opener BackendOpener) {
 }
 
 // Open a PDF document using the default backend
-func Open(path string) (doc Document, err os.Error) {
+func Open(path string) (doc Document, err error) {
 	for _, opener := range backends {
 		doc, err = opener(path)
 		return
 	}
-	return nil, os.NewError("pdfdraw: no available backends")
+	return nil, errors.New("pdfdraw: no available backends")
 }
 
 // Get a list of all available backends
@@ -67,10 +68,10 @@ func Backends() (names []string) {
 }
 
 // Open a PDF document using a specific backend
-func OpenBackend(path string, backend string) (doc Document, err os.Error) {
+func OpenBackend(path string, backend string) (doc Document, err error) {
 	opener, ok := backends[backend]
 	if !ok {
-		return nil, os.NewError("pdfdraw: no such backend")
+		return nil, errors.New("pdfdraw: no such backend")
 	}
 
 	return opener(path)
