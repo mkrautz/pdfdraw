@@ -30,3 +30,19 @@ func TestRenderFirstPage(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func BenchmarkRender(b *testing.B) {
+
+	doc, err := Open("R-intro.pdf")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	page := doc.Page(0)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		page.Render(1024, 1448, nil)
+	}
+
+}
