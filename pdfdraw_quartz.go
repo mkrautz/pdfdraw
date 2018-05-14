@@ -55,7 +55,6 @@ import (
 	"image/color"
 
 	"reflect"
-	"runtime"
 	"unsafe"
 )
 
@@ -74,13 +73,15 @@ func init() {
 func openQuartzDoc(path string) (doc Document, err error) {
 	qd := new(quartzDocument)
 	qd.doc = C.OpenDoc(C.CString(path))
-	if qd.doc == nil {
+	if uintptr(unsafe.Pointer(qd.doc)) == 0 {
 		return nil, errors.New("unable to open pdf file")
 	}
-	runtime.SetFinalizer(qd, func(qd *quartzDocument) {
-		C.ReleaseDoc(qd.doc)
-	})
 	return qd, nil
+}
+
+func (doc *quartzDocument) Close() error {
+	C.ReleaseDoc(doc.doc)
+	return nil
 }
 
 func (doc *quartzDocument) NumPages() int {
@@ -103,8 +104,7 @@ func (page *quartzPage) Render(width int, height int, opts *RenderOptions) image
 	w, h := C.int(width), C.int(height)
 
 	rgba := image.NewRGBA(image.Rect(0, 0, width, height))
-	_, ptr := unsafe.Reflect(rgba.Pix)
-	hdrp := (*reflect.SliceHeader)(ptr)
+	hdrp := (*reflect.SliceHeader)(unsafe.Pointer(&rgba.Pix))
 	ctx := C.CreateBitmapContext(w, h, unsafe.Pointer(hdrp.Data))
 	defer C.ReleaseBitmapContext(ctx)
 

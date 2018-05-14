@@ -35,6 +35,7 @@ import (
 	"errors"
 	"image"
 	"image/color"
+	"reflect"
 
 	"unsafe"
 )
@@ -48,7 +49,6 @@ type popplerPage struct {
 }
 
 func init() {
-	C.g_type_init()
 	RegisterBackend("poppler", popplerOpenDoc)
 }
 
@@ -65,6 +65,10 @@ func popplerOpenDoc(path string) (doc Document, err error) {
 		return nil, errors.New("unable to open file")
 	}
 	return pd, nil
+}
+
+func (doc *popplerDocument) Close() error {
+	return nil
 }
 
 func (doc *popplerDocument) NumPages() int {

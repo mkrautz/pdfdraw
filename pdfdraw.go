@@ -26,6 +26,8 @@ type Document interface {
 	NumPages() int
 	// Get a Page
 	Page(idx int) Page
+
+	Close() error
 }
 
 // Page represents a page in a Document
