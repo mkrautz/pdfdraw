@@ -10,10 +10,6 @@ package pdfdraw
 #include <poppler.h>
 #include <cairo.h>
 
-static unsigned char getbyte(unsigned char *buf, int idx) {
-	return buf[idx];
-}
-
 static char *path_to_uri(char *path) {
 	GError *err = NULL;
 	gchar *absfn = NULL;
@@ -118,18 +114,21 @@ func (page *popplerPage) Render(width int, height int, opts *RenderOptions) imag
 	}
 
 	C.poppler_page_render_for_printing(page.page, ctx)
-	data := C.cairo_image_surface_get_data(surface)
-	nrgba := image.NewNRGBA(image.Rect(0, 0, width, height))
-	for x := 0; x < width; x++ {
-		for y := 0; y < height; y++ {
-			nrgba.SetNRGBA(x, y, color.NRGBA{
-				R: uint8(C.getbyte(data, C.int(x*4+4*y*width+2))),
-				G: uint8(C.getbyte(data, C.int(x*4+4*y*width+1))),
-				B: uint8(C.getbyte(data, C.int(x*4+4*y*width+0))),
-				A: uint8(C.getbyte(data, C.int(x*4+4*y*width+3))),
-			})
-		}
+	dataPtr := C.cairo_image_surface_get_data(surface)
+	data := *(*[]uint8)(unsafe.Pointer(&reflect.SliceHeader{
+		Data: uintptr(unsafe.Pointer(dataPtr)),
+		Len:  width * height * 4,
+		Cap:  width * height * 4,
+	}))
+
+	nrgba := image.NewRGBA(image.Rect(0, 0, width, height))
+	copy(nrgba.Pix, data)
+
+	// cairo bgra -> go rgba
+	for i := 0; i < len(data); i += 4 {
+		nrgba.Pix[i], nrgba.Pix[i+2] = nrgba.Pix[i+2], nrgba.Pix[i]
 	}
 
 	return nrgba
+
 }
