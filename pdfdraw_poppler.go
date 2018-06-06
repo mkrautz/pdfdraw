@@ -6,28 +6,8 @@ package pdfdraw
 
 /*
 #cgo pkg-config: poppler-glib cairo
-#include <stdlib.h>
 #include <poppler.h>
 #include <cairo.h>
-
-static unsigned char getbyte(unsigned char *buf, int idx) {
-	return buf[idx];
-}
-
-static char *path_to_uri(char *path) {
-	GError *err = NULL;
-	gchar *absfn = NULL;
-
-	if (g_path_is_absolute(path))
-		absfn = g_strdup(path);
-	else {
-		gchar *tmp = g_get_current_dir();
-		absfn = g_build_filename(tmp, path, NULL);
-		free(tmp);
-	}
-
-	return (char *) g_filename_to_uri(absfn, NULL, &err);
-}
 */
 import "C"
 
@@ -35,12 +15,15 @@ import (
 	"errors"
 	"image"
 	"image/color"
+	"io/ioutil"
+	"reflect"
 
 	"unsafe"
 )
 
 type popplerDocument struct {
-	doc *C.PopplerDocument
+	doc  *C.PopplerDocument
+	data []byte // keep for gc
 }
 
 type popplerPage struct {
@@ -48,23 +31,23 @@ type popplerPage struct {
 }
 
 func init() {
-	C.g_type_init()
 	RegisterBackend("poppler", popplerOpenDoc)
 }
 
-func popplerOpenDoc(path string) (doc Document, err error) {
-	uri := C.path_to_uri(C.CString(path))
-	if uri == nil {
-		return nil, errors.New("unable to convert path to uri")
+func popplerOpenDoc(path string) (Document, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
 	}
-	defer C.free(unsafe.Pointer(uri))
-
-	pd := new(popplerDocument)
-	pd.doc = C.poppler_document_new_from_file(uri, nil, nil)
-	if pd == nil {
+	doc := C.poppler_document_new_from_data((*C.char)(unsafe.Pointer(&data[0])), C.int(len(data)), nil, nil)
+	if doc == nil {
 		return nil, errors.New("unable to open file")
 	}
-	return pd, nil
+	return &popplerDocument{doc, data}, nil
+}
+
+func (doc *popplerDocument) Close() error {
+	return nil
 }
 
 func (doc *popplerDocument) NumPages() int {
@@ -114,18 +97,21 @@ func (page *popplerPage) Render(width int, height int, opts *RenderOptions) imag
 	}
 
 	C.poppler_page_render_for_printing(page.page, ctx)
-	data := C.cairo_image_surface_get_data(surface)
-	nrgba := image.NewNRGBA(image.Rect(0, 0, width, height))
-	for x := 0; x < width; x++ {
-		for y := 0; y < height; y++ {
-			nrgba.SetNRGBA(x, y, color.NRGBA{
-				R: uint8(C.getbyte(data, C.int(x*4+4*y*width+2))),
-				G: uint8(C.getbyte(data, C.int(x*4+4*y*width+1))),
-				B: uint8(C.getbyte(data, C.int(x*4+4*y*width+0))),
-				A: uint8(C.getbyte(data, C.int(x*4+4*y*width+3))),
-			})
-		}
+	dataPtr := C.cairo_image_surface_get_data(surface)
+	data := *(*[]uint8)(unsafe.Pointer(&reflect.SliceHeader{
+		Data: uintptr(unsafe.Pointer(dataPtr)),
+		Len:  width * height * 4,
+		Cap:  width * height * 4,
+	}))
+
+	nrgba := image.NewRGBA(image.Rect(0, 0, width, height))
+	copy(nrgba.Pix, data)
+
+	// cairo bgra -> go rgba
+	for i := 0; i < len(data); i += 4 {
+		nrgba.Pix[i], nrgba.Pix[i+2] = nrgba.Pix[i+2], nrgba.Pix[i]
 	}
 
 	return nrgba
+
 }

@@ -5,30 +5,44 @@
 package pdfdraw
 
 import (
+	"image/png"
 	"os"
 	"testing"
-	"image/png"
 )
 
 func TestRenderFirstPage(t *testing.T) {
 	doc, err := Open("R-intro.pdf")
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
+	defer doc.Close()
 
 	page := doc.Page(0)
 	img := page.Render(1024, 1448, nil)
 
 	f, err := os.Create("test.png")
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
 	defer f.Close()
 	err = png.Encode(f, img)
 	if err != nil {
-		t.Error(err)
-		return
+		t.Fatal(err)
 	}
+}
+
+func BenchmarkRender(b *testing.B) {
+
+	doc, err := Open("R-intro.pdf")
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	page := doc.Page(0)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		page.Render(1024, 1448, nil)
+	}
+
 }
